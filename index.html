@@ -35,11 +35,11 @@
         .select("*")
         .order("id", { ascending: true });
 
-      data.forEach(addMessage);
+      if (data) data.forEach(addMessage);
 
-      // Realtime購読
+      // 🔥 Supabase JS v2 の正しい Realtime 購読
       supabase
-        .channel("public:messages")
+        .channel("messages")
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "messages" },
