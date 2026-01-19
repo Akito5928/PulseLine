@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h2>Supabase Chat</h2>
+
+    <ul id="messages"></ul>
+
+    <input id="input" placeholder="メッセージ" />
+    <button id="send">送信</button>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+      const supabase = createClient(
+        "https://YOUR-PROJECT.supabase.co",
+        "YOUR-ANON-KEY"
+      );
+
+      const messagesEl = document.getElementById("messages");
+      const inputEl = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+
+      // メッセージ送信
+      sendBtn.onclick = async () => {
+        const content = inputEl.value.trim();
+        if (!content) return;
+
+        await supabase.from("messages").insert({ content });
+        inputEl.value = "";
+      };
+
+      // 初期ロード
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .order("id", { ascending: true });
+
+      data.forEach(addMessage);
+
+      // Realtime購読
+      supabase
+        .channel("public:messages")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages" },
+          (payload) => addMessage(payload.new)
+        )
+        .subscribe();
+
+      function addMessage(msg) {
+        const li = document.createElement("li");
+        li.textContent = msg.content;
+        messagesEl.appendChild(li);
+      }
+    </script>
+  </body>
+</html>
