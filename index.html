@@ -1,57 +1,31 @@
 <!DOCTYPE html>
-<html>
-  <body>
-    <h2>Supabase Chat</h2>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>PulseLine</title>
+  <style>
+    body { margin: 0; display: flex; height: 100vh; font-family: sans-serif; }
+    #channels { width: 200px; background: #2f3136; color: white; padding: 10px; }
+    #messages { flex: 1; background: #36393f; color: white; padding: 10px; overflow-y: scroll; }
+    #input-area { padding: 10px; background: #2f3136; display: flex; }
+    #input-area input { flex: 1; padding: 8px; }
+  </style>
+</head>
+<body>
 
-    <ul id="messages"></ul>
+  <!-- 左：チャンネル一覧 -->
+  <div id="channels"></div>
 
-    <input id="input" placeholder="メッセージ" />
-    <button id="send">送信</button>
+  <!-- 中央：メッセージ一覧 + 投稿フォーム -->
+  <div style="flex: 1; display: flex; flex-direction: column;">
+    <div id="messages"></div>
 
-    <script type="module">
-      import { createClient } from "https://esm.sh/@supabase/supabase-js";
+    <div id="input-area">
+      <input id="messageInput" placeholder="メッセージを入力..." />
+      <button id="sendBtn">送信</button>
+    </div>
+  </div>
 
-      const supabase = createClient(
-        "https://xexmxegzextysojockkt.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
-      );
-
-      const messagesEl = document.getElementById("messages");
-      const inputEl = document.getElementById("input");
-      const sendBtn = document.getElementById("send");
-
-      // メッセージ送信
-      sendBtn.onclick = async () => {
-        const content = inputEl.value.trim();
-        if (!content) return;
-
-        await supabase.from("messages").insert({ content });
-        inputEl.value = "";
-      };
-
-      // 初期ロード
-      const { data } = await supabase
-        .from("messages")
-        .select("*")
-        .order("id", { ascending: true });
-
-      if (data) data.forEach(addMessage);
-
-      // 🔥 Supabase JS v2 の正しい Realtime 購読
-      supabase
-        .channel("messages")
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages" },
-          (payload) => addMessage(payload.new)
-        )
-        .subscribe();
-
-      function addMessage(msg) {
-        const li = document.createElement("li");
-        li.textContent = msg.content;
-        messagesEl.appendChild(li);
-      }
-    </script>
-  </body>
+  <script type="module" src="app.js"></script>
+</body>
 </html>
