@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>PulseLine - 初期設定</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #2f3136;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 60px;
+    }
+
+    #box {
+      background: #36393f;
+      padding: 30px;
+      border-radius: 10px;
+      width: 360px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    /* アイコンプレビュー */
+    #avatar-preview {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: #202225;
+      margin: 0 auto 15px auto;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid #5865f2;
+    }
+
+    /* ドラッグ&ドロップ領域 */
+    #drop-zone {
+      border: 2px dashed #5865f2;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+
+    #drop-zone.dragover {
+      background: rgba(88,101,242,0.2);
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    #saveBtn {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #5865f2;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #saveBtn:hover {
+      background: #4752c4;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="box">
+    <h2>初期設定</h2>
+
+    <!-- アイコンプレビュー -->
+    <div id="avatar-preview"></div>
+
+    <!-- ドラッグ&ドロップ + ファイル選択 -->
+    <div id="drop-zone">
+      アイコン画像をドラッグ&ドロップ<br>
+      またはクリックして選択
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+
+    <!-- 表示名 -->
+    <input id="displayName" type="text" placeholder="表示名（例: Name）" />
+
+    <!-- ユーザーID -->
+    <input id="userTag" type="text" placeholder="ユーザーID（例: name.1111）" />
+
+    <button id="saveBtn">保存して開始</button>
+  </div>
+
+  <script type="module" src="setting.js"></script>
+</body>
+</html>

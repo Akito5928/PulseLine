@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>PulseLine - Chats</title>
+
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      font-family: sans-serif;
+      background: #2f3136;
+      color: white;
+    }
+
+    /* 左：チャンネル一覧 */
+    #channels {
+      width: 200px;
+      background: #2f3136;
+      padding: 10px;
+      border-right: 1px solid #202225;
+    }
+
+    /* 右：チャット本体 */
+    #chat-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* 上部バー */
+    #top-bar {
+      height: 48px;
+      background: #2f3136;
+      border-bottom: 1px solid #202225;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 15px;
+    }
+
+    #settingsBtn {
+      cursor: pointer;
+      font-size: 20px;
+      user-select: none;
+    }
+
+    /* メッセージ一覧 */
+    #messages {
+      flex: 1;
+      background: #36393f;
+      padding: 10px;
+      overflow-y: scroll;
+    }
+
+    /* 入力欄 */
+    #input-area {
+      padding: 12px;
+      background: #2f3136;
+      border-top: 1px solid #202225;
+      display: flex;
+      gap: 10px;
+    }
+
+    #input-wrapper {
+      flex: 1;
+      background: #40444b;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    #messageInput {
+      background: transparent;
+      border: none;
+      color: white;
+      width: 100%;
+      resize: none;
+      outline: none;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    #sendBtn {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* 設定モーダル */
+    #settingsModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #settingsBox {
+      background: #36393f;
+      padding: 25px;
+      border-radius: 10px;
+      width: 360px;
+      text-align: center;
+    }
+
+    #avatar-preview {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: #202225;
+      margin: 0 auto 15px auto;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid #5865f2;
+    }
+
+    #drop-zone {
+      border: 2px dashed #5865f2;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+
+    #drop-zone.dragover {
+      background: rgba(88,101,242,0.2);
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    #saveSettingsBtn {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #5865f2;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #closeSettings {
+      margin-top: 10px;
+      cursor: pointer;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 左：チャンネル一覧 -->
+  <div id="channels"></div>
+
+  <!-- 右：チャット本体 -->
+  <div id="chat-wrapper">
+
+    <!-- 上部バー（設定ボタン） -->
+    <div id="top-bar">
+      <div id="settingsBtn">⚙</div>
+    </div>
+
+    <!-- メッセージ一覧 -->
+    <div id="messages"></div>
+
+    <!-- 入力欄 -->
+    <div id="input-area">
+      <div id="input-wrapper">
+        <textarea id="messageInput" placeholder="メッセージを入力..." rows="1"></textarea>
+      </div>
+      <button id="sendBtn">送信</button>
+    </div>
+  </div>
+
+  <!-- 設定モーダル -->
+  <div id="settingsModal">
+    <div id="settingsBox">
+      <h2>プロフィール設定</h2>
+
+      <div id="avatar-preview"></div>
+
+      <div id="drop-zone">
+        アイコン画像をドラッグ&ドロップ<br>
+        またはクリックして選択
+      </div>
+
+      <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+
+      <input id="displayName" type="text" placeholder="表示名" />
+      <input id="userTag" type="text" placeholder="ユーザーID" />
+
+      <button id="saveSettingsBtn">保存</button>
+      <div id="closeSettings">閉じる</div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+
+  <!-- 🔥 未ログインなら強制送還 -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+    const supabase = createClient(
+      "https://xexmxegzextysojockkt.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
+    );
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        window.location.href = "/login/index.html";
+      }
+    });
+  </script>
+
+</body>
+</html>
