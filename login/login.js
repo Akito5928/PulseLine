@@ -43,7 +43,7 @@ emailLoginBtn.onclick = async () => {
   sessionStorage.setItem("pl_login_email", email);
 
   // 次の画面へ
-  window.location.href = "akito5928.github.io/PulseLine/login/verify.html";
+  window.location.href = "verify.html";
 };
 
 // ------------------------------
