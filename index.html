@@ -27,15 +27,40 @@
     }
 
     #input-area {
-      padding: 10px;
+      padding: 12px;
       background: #2f3136;
+      border-top: 1px solid #202225;
       display: flex;
+      gap: 10px;
     }
 
-    #input-area textarea {
+    #input-wrapper {
       flex: 1;
+      background: #40444b;
+      border-radius: 8px;
       padding: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    #messageInput {
+      background: transparent;
+      border: none;
+      color: white;
+      width: 100%;
       resize: none;
+      outline: none;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    #sendBtn {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
     }
 
     .read {
@@ -51,12 +76,14 @@
   <!-- 左：チャンネル一覧 -->
   <div id="channels"></div>
 
-  <!-- 中央：メッセージ一覧 + 投稿フォーム -->
+  <!-- 中央：メッセージ一覧 + 入力欄 -->
   <div style="flex: 1; display: flex; flex-direction: column;">
     <div id="messages"></div>
 
     <div id="input-area">
-      <textarea id="messageInput" placeholder="メッセージを入力..." rows="2"></textarea>
+      <div id="input-wrapper">
+        <textarea id="messageInput" placeholder="メッセージを入力..." rows="1"></textarea>
+      </div>
       <button id="sendBtn">送信</button>
     </div>
   </div>
