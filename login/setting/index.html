@@ -3,33 +3,44 @@
 <head>
   <meta charset="UTF-8" />
   <title>PulseLine - 初期設定</title>
-
   <style>
     body {
       margin: 0;
-      font-family: sans-serif;
-      background: #2f3136;
-      color: white;
+      height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      padding-top: 60px;
+      justify-content: center;
+      background: #202225;
+      color: white;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
-
     #box {
-      background: #36393f;
-      padding: 30px;
-      border-radius: 10px;
-      width: 360px;
-      text-align: center;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      background: #2f3136;
+      padding: 32px 40px;
+      border-radius: 12px;
+      width: 420px;
+      box-sizing: border-box;
     }
-
-    h2 {
+    h1 {
+      font-size: 20px;
       margin-bottom: 20px;
+      text-align: center;
     }
-
-    /* アイコンプレビュー */
+    label {
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: #ccc;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
     #avatar-preview {
       width: 96px;
       height: 96px;
@@ -40,29 +51,18 @@
       background-position: center;
       border: 2px solid #5865f2;
     }
-
-    /* ドラッグ&ドロップ領域 */
     #drop-zone {
       border: 2px dashed #5865f2;
-      padding: 20px;
+      padding: 16px;
       border-radius: 8px;
       margin-bottom: 15px;
+      text-align: center;
+      font-size: 13px;
       cursor: pointer;
     }
-
     #drop-zone.dragover {
       background: rgba(88,101,242,0.2);
     }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
     #saveBtn {
       margin-top: 20px;
       width: 100%;
@@ -71,40 +71,32 @@
       border: none;
       border-radius: 6px;
       color: white;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
-    }
-
-    #saveBtn:hover {
-      background: #4752c4;
     }
   </style>
 </head>
 <body>
-
   <div id="box">
-    <h2>初期設定</h2>
+    <h1>プロフィール初期設定</h1>
 
-    <!-- アイコンプレビュー -->
     <div id="avatar-preview"></div>
 
-    <!-- ドラッグ&ドロップ + ファイル選択 -->
     <div id="drop-zone">
       アイコン画像をドラッグ&ドロップ<br>
       またはクリックして選択
     </div>
+    <input id="fileInput" type="file" accept="image/*" style="display:none;" />
 
-    <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+    <label for="displayName">表示名</label>
+    <input id="displayName" type="text" placeholder="表示名を入力" />
 
-    <!-- 表示名 -->
-    <input id="displayName" type="text" placeholder="表示名（例: Name）" />
+    <label for="userTag">ユーザーID（英小文字・数字・._- / 1〜32文字）</label>
+    <input id="userTag" type="text" placeholder="例: akito_5928" />
 
-    <!-- ユーザーID -->
-    <input id="userTag" type="text" placeholder="ユーザーID（例: name.1111）" />
-
-    <button id="saveBtn">保存して開始</button>
+    <button id="saveBtn">OK</button>
   </div>
 
-  <script type="module" src="setting.js"></script>
+  <script type="module" src="./setting.js"></script>
 </body>
 </html>
