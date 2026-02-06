@@ -61,21 +61,26 @@ sendBtn.onclick = async () => {
   inputEl.value = "";
 };
 
-// 🔹 Enter → 送信 / Ctrl+Enter → 改行
+// 🔹 Enter → 送信 / Ctrl+Enter → 改行（Discordと同じ）
 inputEl.addEventListener("keydown", (e) => {
   // Ctrl + Enter → 改行
   if (e.key === "Enter" && e.ctrlKey) {
     e.preventDefault();
+
     const start = inputEl.selectionStart;
     const end = inputEl.selectionEnd;
+
     inputEl.value =
-      inputEl.value.substring(0, start) + "\n" + inputEl.value.substring(end);
+      inputEl.value.substring(0, start) +
+      "\n" +
+      inputEl.value.substring(end);
+
     inputEl.selectionStart = inputEl.selectionEnd = start + 1;
     return;
   }
 
   // Enter → 送信
-  if (e.key === "Enter") {
+  if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
     e.preventDefault();
     sendBtn.click();
   }
