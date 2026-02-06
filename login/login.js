@@ -9,13 +9,19 @@ const emailInput = document.getElementById("email");
 const emailLoginBtn = document.getElementById("emailLoginBtn");
 const googleBtn = document.getElementById("googleBtn");
 
+// ------------------------------
 // メールで6桁コード送信 → verify.htmlへ
+// ------------------------------
 emailLoginBtn.onclick = async () => {
   const email = emailInput.value.trim();
   if (!email) {
     alert("メールアドレスを入力してください");
     return;
   }
+
+  // 送信中ロック（連打防止）
+  emailLoginBtn.disabled = true;
+  emailLoginBtn.textContent = "送信中...";
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -26,16 +32,27 @@ emailLoginBtn.onclick = async () => {
 
   if (error) {
     alert("メール送信に失敗しました: " + error.message);
+
+    // ロック解除
+    emailLoginBtn.disabled = false;
+    emailLoginBtn.textContent = "ログイン / サインアップ";
     return;
   }
 
   // verify.html にメールアドレスを渡す（sessionStorage）
   sessionStorage.setItem("pl_login_email", email);
+
+  // 次の画面へ
   window.location.href = "/login/verify.html";
 };
 
+// ------------------------------
 // Google ログイン
+// ------------------------------
 googleBtn.onclick = async () => {
+  googleBtn.disabled = true;
+  googleBtn.textContent = "Googleに接続中...";
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -45,5 +62,7 @@ googleBtn.onclick = async () => {
 
   if (error) {
     alert("Googleログインに失敗しました: " + error.message);
+    googleBtn.disabled = false;
+    googleBtn.textContent = "Googleでログイン";
   }
 };
