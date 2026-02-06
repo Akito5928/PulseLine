@@ -40,6 +40,9 @@ async function loadChannel(id) {
     .order("id");
 
   data.forEach(addMessage);
+
+  // 読み込んだメッセージを既読にする
+  markAsRead(data);
 }
 
 // 🔹 メッセージ送信
@@ -47,31 +50,97 @@ sendBtn.onclick = async () => {
   const content = inputEl.value.trim();
   if (!content) return;
 
+  const user = (await supabase.auth.getUser()).data.user;
+
   await supabase.from("messages").insert({
     content,
-    channel_id: currentChannelId
+    channel_id: currentChannelId,
+    author_id: user ? user.id : null
   });
 
   inputEl.value = "";
 };
 
-// 🔹 Realtime 購読
+// 🔹 Enter → 送信 / Ctrl+Enter → 改行
+inputEl.addEventListener("keydown", (e) => {
+  // Ctrl + Enter → 改行
+  if (e.key === "Enter" && e.ctrlKey) {
+    e.preventDefault();
+    const start = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+    inputEl.value =
+      inputEl.value.substring(0, start) + "\n" + inputEl.value.substring(end);
+    inputEl.selectionStart = inputEl.selectionEnd = start + 1;
+    return;
+  }
+
+  // Enter → 送信
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
+
+// 🔹 Realtime（新規メッセージ）
 supabase
   .channel("messages")
   .on(
     "postgres_changes",
     { event: "INSERT", schema: "public", table: "messages" },
-    (payload) => {
+    async (payload) => {
       if (payload.new.channel_id === currentChannelId) {
         addMessage(payload.new);
+        markAsRead([payload.new]);
       }
     }
   )
   .subscribe();
 
-function addMessage(msg) {
+// 🔹 既読数を取得
+async function getReadCount(messageId) {
+  const { data } = await supabase
+    .from("read_receipts")
+    .select("user_id")
+    .eq("message_id", messageId);
+
+  return data ? data.length : 0;
+}
+
+// 🔹 既読をつける
+async function markAsRead(messages) {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) return; // 匿名は既読なし
+
+  const inserts = messages.map((msg) => ({
+    message_id: msg.id,
+    user_id: user.id
+  }));
+
+  await supabase.from("read_receipts").upsert(inserts);
+}
+
+// 🔹 メッセージ描画（既読表示対応）
+async function addMessage(msg) {
   const div = document.createElement("div");
-  div.textContent = msg.content;
+  div.style.marginBottom = "10px";
+  div.dataset.id = msg.id;
+
+  // 本文
+  const content = document.createElement("div");
+  content.textContent = msg.content;
+  div.appendChild(content);
+
+  // 自分のメッセージだけ既読表示
+  const user = (await supabase.auth.getUser()).data.user;
+  if (user && msg.author_id === user.id) {
+    const readCount = await getReadCount(msg.id);
+
+    const readEl = document.createElement("div");
+    readEl.className = "read";
+    readEl.textContent = `（既読 ${readCount}）`;
+    div.appendChild(readEl);
+  }
+
   messagesEl.appendChild(div);
 }
 
