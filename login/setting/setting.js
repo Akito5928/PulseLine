@@ -23,7 +23,7 @@ async function init() {
   currentUser = data.user;
 
   if (!currentUser) {
-    window.location.href = "/login/index.html";
+    window.location.href = "./login/index.html";
     return;
   }
 
@@ -35,7 +35,7 @@ async function init() {
     .maybeSingle();
 
   if (profile) {
-    window.location.href = "/chats/index.html";
+    window.location.href = "./chats/index.html";
     return;
   }
 
@@ -164,5 +164,5 @@ saveBtn.onclick = async () => {
     return;
   }
 
-  window.location.href = "/chats/index.html";
+  window.location.href = "./chats/index.html";
 };
