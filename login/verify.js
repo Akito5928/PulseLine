@@ -46,9 +46,9 @@ verifyBtn.onclick = async () => {
 
   if (!profile) {
     // 初回 → 設定画面へ
-    window.location.href = "/pulseline/login/setting/index.html";
+    window.location.href = "/PulseLine/login/setting/index.html";
   } else {
     // 既存 → チャットへ
-    window.location.href = "/pulseline/chats/index.html";
+    window.location.href = "/PulseLine/chats/index.html";
   }
 };
