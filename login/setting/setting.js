@@ -164,5 +164,5 @@ saveBtn.onclick = async () => {
     return;
   }
 
-  window.location.href = "./chats/index.html";
+  window.location.href = "/PulseLine/chats/index.html";
 };
