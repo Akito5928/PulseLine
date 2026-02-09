@@ -1,15 +1,14 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+// verify.js（新方式）
+// フロントは Supabase に直接触らない。
+// すべて Cloudflare Worker 経由の api.js に任せる。
 
-const supabase = createClient(
-  "https://xexmxegzextysojockkt.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
-);
+import { api } from "../api.js";
 
 const emailLabel = document.getElementById("emailLabel");
 const codeInput = document.getElementById("code");
 const verifyBtn = document.getElementById("verifyBtn");
 
-// index.js から渡されたメール
+// login.js から渡されたメール
 const email = sessionStorage.getItem("pl_login_email") || "";
 emailLabel.textContent = email ? `送信先: ${email}` : "メールアドレスを確認してください";
 
@@ -20,31 +19,29 @@ verifyBtn.onclick = async () => {
     return;
   }
 
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token: code,
-    type: "email"
-  });
+  // Worker 経由で OTP を検証
+  const result = await api.verifyOtp(email, code);
 
-  if (error) {
-    alert("コードの確認に失敗しました: " + error.message);
+  if (!result.ok) {
+    alert("コードの確認に失敗しました: " + result.error);
     return;
   }
 
-  // ログイン成功 → プロフィールがあるか確認
-  const user = data.user;
+  const user = result.user;
   if (!user) {
     alert("ユーザー情報の取得に失敗しました");
     return;
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", user.id)
-    .maybeSingle();
+  // プロフィールが存在するか Worker 経由で確認
+  const profile = await api.getProfile(user.id);
 
-  if (!profile) {
+  if (!profile.ok) {
+    alert("プロフィール確認に失敗しました: " + profile.error);
+    return;
+  }
+
+  if (!profile.exists) {
     // 初回 → 設定画面へ
     window.location.href = "/PulseLine/login/setting/index.html";
   } else {

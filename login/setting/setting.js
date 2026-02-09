@@ -1,9 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+// setting.js（新方式）
+// すべての Supabase 操作は Cloudflare Worker 経由の api.js に任せる。
 
-const supabase = createClient(
-  "https://xexmxegzextysojockkt.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
-);
+import { api } from "../api.js";  // ← パス注意（/login/setting/setting.js）
 
 const displayNameEl = document.getElementById("displayName");
 const userTagEl = document.getElementById("userTag");
@@ -19,23 +17,19 @@ let currentUser = null;
 init();
 
 async function init() {
-  const { data } = await supabase.auth.getUser();
-  currentUser = data.user;
-
-  if (!currentUser) {
-    window.location.href = "./login/index.html";
+  // Worker 経由でログイン中ユーザー取得
+  const userRes = await api.getCurrentUser();
+  if (!userRes.ok) {
+    window.location.href = "/PulseLine/login/index.html";
     return;
   }
 
-  // すでにプロフィールがあるなら /chats へ（Google 2回目以降など）
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .maybeSingle();
+  currentUser = userRes.user;
 
-  if (profile) {
-    window.location.href = "./chats/index.html";
+  // プロフィールが既にあるなら /chats へ
+  const profileRes = await api.getProfile(currentUser.id);
+  if (profileRes.ok && profileRes.exists) {
+    window.location.href = "/PulseLine/chats/index.html";
     return;
   }
 
@@ -48,8 +42,10 @@ async function init() {
     avatarPreview.style.backgroundImage = `url(${meta.avatar_url})`;
   }
 
-  // user_tag は自動生成候補
-  const base = (displayNameEl.value || "user").toLowerCase().replace(/[^a-z0-9._-]/g, "");
+  // user_tag 自動生成
+  const base = (displayNameEl.value || "user")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "");
   const rand = Math.floor(1000 + Math.random() * 9000);
   userTagEl.value = (base || "user") + rand;
 }
@@ -105,38 +101,27 @@ saveBtn.onclick = async () => {
     return;
   }
 
-  // user_tag 重複チェック
-  const { data: existing } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("user_tag", user_tag);
-
-  if (existing && existing.length > 0) {
+  // user_tag 重複チェック（Worker 経由）
+  const tagCheck = await api.checkUserTag(user_tag);
+  if (!tagCheck.ok) {
+    alert("ユーザーID確認に失敗しました: " + tagCheck.error);
+    return;
+  }
+  if (tagCheck.exists) {
     alert("このユーザーIDは既に使われています");
     return;
   }
 
-  // アイコンアップロード
+  // アイコンアップロード（Worker 経由）
   let icon_url = null;
 
   if (selectedFile) {
-    const ext = selectedFile.name.split(".").pop();
-    const filePath = `avatars/${currentUser.id}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, selectedFile, { upsert: true });
-
-    if (uploadError) {
-      alert("アイコンのアップロードに失敗しました: " + uploadError.message);
+    const uploadRes = await api.uploadAvatar(currentUser.id, selectedFile);
+    if (!uploadRes.ok) {
+      alert("アイコンのアップロードに失敗しました: " + uploadRes.error);
       return;
     }
-
-    const { data: publicUrl } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-    icon_url = publicUrl.publicUrl;
+    icon_url = uploadRes.url;
   } else {
     // Google の avatar_url をそのまま使うケース
     const meta = currentUser.user_metadata || {};
@@ -145,22 +130,17 @@ saveBtn.onclick = async () => {
     }
   }
 
-  // email は auth.users.email を保存
-  const email = currentUser.email || null;
+  // プロフィール作成（Worker 経由）
+  const saveRes = await api.createProfile({
+    id: currentUser.id,
+    display_name,
+    user_tag,
+    icon_url,
+    email: currentUser.email || null
+  });
 
-  // profiles 作成
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .insert({
-      id: currentUser.id,
-      display_name,
-      user_tag,
-      icon_url,
-      email
-    });
-
-  if (profileError) {
-    alert("プロフィールの保存に失敗しました: " + profileError.message);
+  if (!saveRes.ok) {
+    alert("プロフィールの保存に失敗しました: " + saveRes.error);
     return;
   }
 

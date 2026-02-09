@@ -1,9 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+// message.js（新方式）
+// Supabase 直アクセス禁止。
+// すべて Cloudflare Worker 経由の api.js に任せる。
 
-const supabase = createClient(
-  "https://xexmxegzextysojockkt.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
-);
+import { api } from "../api.js";
 
 let messagesEl = null;
 let currentUser = null;
@@ -15,21 +14,20 @@ let lastMessageMinute = null;
 const messageMap = new Map();      // id → { bubble, contentEl, readEl }
 const readCountMap = new Map();    // id → readEl
 
+// ------------------------------
+// 初期化
+// ------------------------------
 export function initMessageModule(rootEl, user) {
   messagesEl = rootEl;
   currentUser = user;
 
-  supabase
-    .channel("read_receipts")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "read_receipts" },
-      async (payload) => {
-        const msgId = payload.new.message_id;
-        await updateReadCount(msgId);
-      }
-    )
-    .subscribe();
+  // Worker 経由のリアルタイム購読
+  api.subscribeReadReceipts(async (event) => {
+    if (event.type === "INSERT") {
+      const msgId = event.data.message_id;
+      await updateReadCount(msgId);
+    }
+  });
 }
 
 export function resetMessages() {
@@ -42,7 +40,6 @@ export function resetMessages() {
 }
 
 export async function addOrUpdateMessage(msg) {
-  // 既に存在するなら更新（編集）
   if (messageMap.has(msg.id)) {
     await updateMessageContent(msg);
     return;
@@ -75,12 +72,11 @@ async function renderNewMessage(msg) {
     messagesEl.appendChild(line);
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", msg.author_id)
-    .single();
+  // Worker 経由でプロフィール取得
+  const profileRes = await api.getProfile(msg.author_id);
+  if (!profileRes.ok) return;
 
+  const profile = profileRes.profile;
   const nameTag = `${profile.display_name}@${profile.user_tag}`;
   const minute = formatTime(msg.created_at);
 
@@ -189,7 +185,7 @@ async function renderNewMessage(msg) {
   let readEl = null;
 
   if (msg.author_id === currentUser.id) {
-    const count = await getReadCount(msg.id);
+    const count = await api.getReadCount(msg.id);
     readEl = document.createElement("div");
     readEl.style.fontSize = "10px";
     readEl.style.color = "#aaa";
@@ -198,7 +194,7 @@ async function renderNewMessage(msg) {
     bubble.appendChild(readEl);
     readCountMap.set(msg.id, readEl);
   } else {
-    markAsRead(msg.id);
+    api.markAsRead(msg.id);
   }
 
   messageMap.set(msg.id, { bubble, contentEl: content, readEl });
@@ -219,7 +215,8 @@ async function updateMessageContent(msg) {
 async function updateReadCount(messageId) {
   const readEl = readCountMap.get(messageId);
   if (!readEl) return;
-  const count = await getReadCount(messageId);
+
+  const count = await api.getReadCount(messageId);
   readEl.textContent = `既読 ${count}`;
 }
 
@@ -272,13 +269,11 @@ function startEditMessage(messageId) {
         return;
       }
 
-      await supabase
-        .from("messages")
-        .update({
-          content: newContent,
-          edited_at: new Date().toISOString()
-        })
-        .eq("id", messageId);
+      const res = await api.updateMessage(messageId, newContent);
+      if (!res.ok) {
+        alert("メッセージ編集に失敗しました: " + res.error);
+        return;
+      }
 
       entry.contentEl.textContent = newContent + " (編集済み)";
       textarea.replaceWith(entry.contentEl);
@@ -297,7 +292,12 @@ async function handleDeleteClick(e, messageId) {
     if (!ok) return;
   }
 
-  await supabase.from("messages").delete().eq("id", messageId);
+  const res = await api.deleteMessage(messageId);
+  if (!res.ok) {
+    alert("削除に失敗しました: " + res.error);
+    return;
+  }
+
   removeMessage(messageId);
 }
 
@@ -305,20 +305,12 @@ async function handleDeleteClick(e, messageId) {
 // 既読
 // ------------------------------
 async function markAsRead(messageId) {
-  await supabase.from("read_receipts").upsert({
-    message_id: messageId,
-    user_id: currentUser.id,
-    read_at: new Date().toISOString()
-  });
+  await api.markAsRead(messageId);
 }
 
 async function getReadCount(messageId) {
-  const { data } = await supabase
-    .from("read_receipts")
-    .select("user_id")
-    .eq("message_id", messageId);
-
-  return data ? data.length : 0;
+  const res = await api.getReadCount(messageId);
+  return res.ok ? res.count : 0;
 }
 
 // ------------------------------

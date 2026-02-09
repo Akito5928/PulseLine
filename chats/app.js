@@ -1,15 +1,14 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+// app.js（新方式）
+// Supabase 直アクセス禁止。
+// すべて Cloudflare Worker 経由の api.js に任せる。
+
+import { api } from "../api.js";
 import {
   initMessageModule,
   resetMessages,
   addOrUpdateMessage,
   removeMessage
 } from "./message.js";
-
-const supabase = createClient(
-  "https://xexmxegzextysojockkt.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
-);
 
 // UI
 const channelsEl = document.getElementById("channels");
@@ -39,13 +38,14 @@ let currentChannelId = 1;
 init();
 
 async function init() {
-  const { data } = await supabase.auth.getUser();
-  currentUser = data.user;
-
-  if (!currentUser) {
-    window.location.href = "/login/index.html";
+  // Worker 経由でログイン中ユーザー取得
+  const userRes = await api.getCurrentUser();
+  if (!userRes.ok) {
+    window.location.href = "/PulseLine/login/index.html";
     return;
   }
+
+  currentUser = userRes.user;
 
   initMessageModule(messagesEl, currentUser);
 
@@ -60,19 +60,20 @@ async function init() {
 // プロフィール
 // ------------------------------
 async function loadProfile() {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .single();
+  const profileRes = await api.getProfile(currentUser.id);
 
-  currentProfile = profile;
+  if (!profileRes.ok) {
+    alert("プロフィール取得に失敗しました: " + profileRes.error);
+    return;
+  }
 
-  displayNameEl.value = profile.display_name || "";
-  userTagEl.value = profile.user_tag || "";
+  currentProfile = profileRes.profile;
 
-  if (profile.icon_url) {
-    avatarPreview.style.backgroundImage = `url(${profile.icon_url})`;
+  displayNameEl.value = currentProfile.display_name || "";
+  userTagEl.value = currentProfile.user_tag || "";
+
+  if (currentProfile.icon_url) {
+    avatarPreview.style.backgroundImage = `url(${currentProfile.icon_url})`;
   }
 }
 
@@ -91,16 +92,13 @@ function setupSettingsUI() {
   };
 
   dropZone.addEventListener("click", () => fileInput.click());
-
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
     dropZone.classList.add("dragover");
   });
-
   dropZone.addEventListener("dragleave", () => {
     dropZone.classList.remove("dragover");
   });
-
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("dragover");
@@ -133,43 +131,41 @@ function setupSettingsUI() {
       return;
     }
 
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_tag", user_tag)
-      .neq("id", currentUser.id);
-
-    if (existing && existing.length > 0) {
+    // user_tag 重複チェック
+    const tagCheck = await api.checkUserTag(user_tag, currentUser.id);
+    if (!tagCheck.ok) {
+      alert("ユーザーID確認に失敗しました: " + tagCheck.error);
+      return;
+    }
+    if (tagCheck.exists) {
       alert("このユーザーIDは既に使われています");
       return;
     }
 
+    // アイコンアップロード
     let icon_url = currentProfile.icon_url;
 
     if (selectedFile) {
-      const ext = selectedFile.name.split(".").pop();
-      const filePath = `avatars/${currentUser.id}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, selectedFile, { upsert: true });
-
-      if (uploadError) {
-        alert("アイコンのアップロードに失敗しました");
+      const uploadRes = await api.uploadAvatar(currentUser.id, selectedFile);
+      if (!uploadRes.ok) {
+        alert("アイコンのアップロードに失敗しました: " + uploadRes.error);
         return;
       }
-
-      const { data: publicUrl } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      icon_url = publicUrl.publicUrl;
+      icon_url = uploadRes.url;
     }
 
-    await supabase
-      .from("profiles")
-      .update({ display_name, user_tag, icon_url })
-      .eq("id", currentUser.id);
+    // プロフィール更新
+    const updateRes = await api.updateProfile({
+      id: currentUser.id,
+      display_name,
+      user_tag,
+      icon_url
+    });
+
+    if (!updateRes.ok) {
+      alert("プロフィール更新に失敗しました: " + updateRes.error);
+      return;
+    }
 
     settingsModal.style.display = "none";
     await loadProfile();
@@ -180,14 +176,15 @@ function setupSettingsUI() {
 // チャンネル
 // ------------------------------
 async function loadChannels() {
-  const { data: channels } = await supabase
-    .from("channels")
-    .select("*")
-    .order("id");
+  const res = await api.getChannels();
+  if (!res.ok) {
+    alert("チャンネル取得に失敗しました: " + res.error);
+    return;
+  }
 
   channelsEl.innerHTML = "";
 
-  channels.forEach((ch) => {
+  res.channels.forEach((ch) => {
     const div = document.createElement("div");
     div.textContent = ch.name;
     div.style.cursor = "pointer";
@@ -200,13 +197,13 @@ async function loadChannel(id) {
   currentChannelId = id;
   resetMessages();
 
-  const { data } = await supabase
-    .from("messages")
-    .select("*")
-    .eq("channel_id", id)
-    .order("id");
+  const res = await api.getMessages(id);
+  if (!res.ok) {
+    alert("メッセージ取得に失敗しました: " + res.error);
+    return;
+  }
 
-  for (const msg of data) {
+  for (const msg of res.messages) {
     await addOrUpdateMessage(msg);
   }
 }
@@ -218,11 +215,16 @@ sendBtn.onclick = async () => {
   const content = inputEl.value.trim();
   if (!content) return;
 
-  await supabase.from("messages").insert({
+  const res = await api.sendMessage({
     content,
     channel_id: currentChannelId,
     author_id: currentUser.id
   });
+
+  if (!res.ok) {
+    alert("メッセージ送信に失敗しました: " + res.error);
+    return;
+  }
 
   inputEl.value = "";
 };
@@ -247,35 +249,18 @@ inputEl.addEventListener("keydown", (e) => {
 });
 
 // ------------------------------
-// Realtime
+// Realtime（Worker 経由）
 // ------------------------------
 function setupRealtime() {
-  supabase
-    .channel("messages")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "messages" },
-      async (payload) => {
-        if (payload.new.channel_id === currentChannelId) {
-          await addOrUpdateMessage(payload.new);
-        }
-      }
-    )
-    .on(
-      "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "messages" },
-      async (payload) => {
-        if (payload.new.channel_id === currentChannelId) {
-          await addOrUpdateMessage(payload.new);
-        }
-      }
-    )
-    .on(
-      "postgres_changes",
-      { event: "DELETE", schema: "public", table: "messages" },
-      (payload) => {
-        removeMessage(payload.old.id);
-      }
-    )
-    .subscribe();
+  api.subscribeMessages((event) => {
+    if (event.type === "INSERT" && event.data.channel_id === currentChannelId) {
+      addOrUpdateMessage(event.data);
+    }
+    if (event.type === "UPDATE" && event.data.channel_id === currentChannelId) {
+      addOrUpdateMessage(event.data);
+    }
+    if (event.type === "DELETE") {
+      removeMessage(event.data.id);
+    }
+  });
 }

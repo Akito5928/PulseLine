@@ -1,9 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+// login.js（新方式）
+// フロントは Supabase に直接触らない。
+// すべて Cloudflare Worker 経由の api.js に任せる。
 
-const supabase = createClient(
-  "https://xexmxegzextysojockkt.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleG14ZWd6ZXh0eXNvam9ja2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTcxNzAsImV4cCI6MjA4NDMzMzE3MH0.NZbo3YRCRzkS24ep_I9_PGmlJyK7y_hpBDThQENXqeo"
-);
+import { api } from "../api.js";
 
 const emailInput = document.getElementById("email");
 const emailLoginBtn = document.getElementById("emailLoginBtn");
@@ -23,15 +22,11 @@ emailLoginBtn.onclick = async () => {
   emailLoginBtn.disabled = true;
   emailLoginBtn.textContent = "送信中...";
 
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: "https://your-domain.com/login/verify.html"
-    }
-  });
+  // Worker 経由で OTP を送信
+  const result = await api.sendOtp(email);
 
-  if (error) {
-    alert("メール送信に失敗しました: " + error.message);
+  if (!result.ok) {
+    alert("メール送信に失敗しました: " + result.error);
 
     // ロック解除
     emailLoginBtn.disabled = false;
@@ -53,16 +48,16 @@ googleBtn.onclick = async () => {
   googleBtn.disabled = true;
   googleBtn.textContent = "Googleに接続中...";
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: "https://your-domain.com/login/setting/index.html"
-    }
-  });
+  // Worker 経由で Google OAuth 開始
+  const result = await api.startGoogleLogin();
 
-  if (error) {
-    alert("Googleログインに失敗しました: " + error.message);
+  if (!result.ok) {
+    alert("Googleログインに失敗しました: " + result.error);
     googleBtn.disabled = false;
     googleBtn.textContent = "Googleでログイン";
+    return;
   }
+
+  // Worker から返された URL にリダイレクト
+  window.location.href = result.url;
 };
