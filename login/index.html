@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>PulseLine - ログイン / サインアップ</title>
+  <title>PulseLine - ログイン</title>
   <style>
     body {
       margin: 0;
@@ -33,7 +33,7 @@
       font-size: 13px;
       color: #ccc;
     }
-    input[type="email"] {
+    input {
       width: 100%;
       padding: 10px;
       border-radius: 6px;
@@ -78,21 +78,27 @@
 </head>
 <body>
   <div id="box">
-    <h1>PulseLine ログイン / サインアップ</h1>
+    <h1>PulseLine ログイン</h1>
 
     <div style="text-align:left;">
-      <label for="email">メールアドレス</label>
-      <input id="email" type="email" placeholder="you@example.com" />
+      <label for="username">ユーザー名</label>
+      <input id="username" type="text" placeholder="yourname" />
     </div>
 
-    <button id="emailLoginBtn">ログイン / サインアップ</button>
+    <div style="text-align:left;">
+      <label for="password">パスワード</label>
+      <input id="password" type="password" placeholder="••••••••" />
+    </div>
+
+    <!-- ログイン / 新規登録を統合 -->
+    <button id="loginOrRegisterBtn">ログイン / 新規登録</button>
 
     <button id="googleBtn">
       <span>Googleでログイン</span>
     </button>
 
     <div id="info">
-      メールアドレスで6桁コードを受け取り、次の画面で入力します。
+      ユーザー名が存在しない場合は自動的に新規登録されます。
     </div>
 
     <div id="copyright">

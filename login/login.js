@@ -4,41 +4,70 @@
 
 import { api } from "../api.js";
 
-const emailInput = document.getElementById("email");
-const emailLoginBtn = document.getElementById("emailLoginBtn");
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+const loginOrRegisterBtn = document.getElementById("loginOrRegisterBtn");
 const googleBtn = document.getElementById("googleBtn");
 
 // ------------------------------
-// メールで6桁コード送信 → verify.htmlへ
+// ログイン / 新規登録（統合ボタン）
 // ------------------------------
-emailLoginBtn.onclick = async () => {
-  const email = emailInput.value.trim();
-  if (!email) {
-    alert("メールアドレスを入力してください");
+loginOrRegisterBtn.onclick = async () => {
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value.trim();
+
+  if (!username || !password) {
+    alert("ユーザー名とパスワードを入力してください");
     return;
   }
 
-  // 送信中ロック（連打防止）
-  emailLoginBtn.disabled = true;
-  emailLoginBtn.textContent = "送信中...";
+  // ボタン連打防止
+  loginOrRegisterBtn.disabled = true;
+  loginOrRegisterBtn.textContent = "処理中...";
 
-  // Worker 経由で OTP を送信
-  const result = await api.sendOtp(email);
+  try {
+    // 1. ユーザーが存在するか確認
+    const exists = await api.checkUserExists(username);
 
-  if (!result.ok) {
-    alert("メール送信に失敗しました: " + result.error);
+    if (exists?.exists) {
+      // ------------------------------
+      // 既存ユーザー → ログイン
+      // ------------------------------
+      const result = await api.login(username, password);
 
-    // ロック解除
-    emailLoginBtn.disabled = false;
-    emailLoginBtn.textContent = "ログイン / サインアップ";
-    return;
+      if (!result.ok) {
+        alert("ログインに失敗しました: " + (result.error || ""));
+        loginOrRegisterBtn.disabled = false;
+        loginOrRegisterBtn.textContent = "ログイン / 新規登録";
+        return;
+      }
+
+      // ログイン成功 → チャットへ
+      window.location.href = "../chats/index.html";
+
+    } else {
+      // ------------------------------
+      // 新規ユーザー → 登録
+      // ------------------------------
+      const result = await api.register(username, password);
+
+      if (!result.ok) {
+        alert("新規登録に失敗しました: " + (result.error || ""));
+        loginOrRegisterBtn.disabled = false;
+        loginOrRegisterBtn.textContent = "ログイン / 新規登録";
+        return;
+      }
+
+      // 新規登録成功 → プロフィール設定へ
+      window.location.href = "./setting/index.html";
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("通信エラーが発生しました");
+    loginOrRegisterBtn.disabled = false;
+    loginOrRegisterBtn.textContent = "ログイン / 新規登録";
   }
-
-  // verify.html にメールアドレスを渡す（sessionStorage）
-  sessionStorage.setItem("pl_login_email", email);
-
-  // 次の画面へ
-  window.location.href = "verify.html";
 };
 
 // ------------------------------
@@ -48,16 +77,23 @@ googleBtn.onclick = async () => {
   googleBtn.disabled = true;
   googleBtn.textContent = "Googleに接続中...";
 
-  // Worker 経由で Google OAuth 開始
-  const result = await api.startGoogleLogin();
+  try {
+    const result = await api.startGoogleLogin();
 
-  if (!result.ok) {
-    alert("Googleログインに失敗しました: " + result.error);
+    if (!result.ok) {
+      alert("Googleログインに失敗しました: " + result.error);
+      googleBtn.disabled = false;
+      googleBtn.textContent = "Googleでログイン";
+      return;
+    }
+
+    // Worker から返された URL にリダイレクト
+    window.location.href = result.url;
+
+  } catch (err) {
+    console.error(err);
+    alert("Googleログインに失敗しました");
     googleBtn.disabled = false;
     googleBtn.textContent = "Googleでログイン";
-    return;
   }
-
-  // Worker から返された URL にリダイレクト
-  window.location.href = result.url;
 };

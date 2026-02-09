@@ -5,18 +5,22 @@ const API_BASE = "https://pulseline.savasft5928-819.workers.dev/";
 
 export const api = {
   // ------------------------------
-  // 認証
+  // 認証（新方式）
   // ------------------------------
-  async sendOtp(email) {
-    return post("/auth/send-otp", { email });
+  async checkUserExists(username) {
+    return post("/auth/check-user", { username });
+  },
+
+  async login(username, password) {
+    return post("/auth/login", { username, password });
+  },
+
+  async register(username, password) {
+    return post("/auth/register", { username, password });
   },
 
   async startGoogleLogin() {
     return post("/auth/google/start");
-  },
-
-  async verifyOtp(email, code) {
-    return post("/auth/verify-otp", { email, code });
   },
 
   async getCurrentUser() {
