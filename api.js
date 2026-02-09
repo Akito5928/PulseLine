@@ -1,7 +1,7 @@
 // api.js（PulseLine 新方式 API レイヤー）
 // すべての通信を Cloudflare Worker に集約する。
 
-const API_BASE = "https://YOUR_WORKER_URL/api";
+const API_BASE = "https://pulseline.savasft5928-819.workers.dev/";
 
 export const api = {
   // ------------------------------
